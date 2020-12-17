@@ -4,3 +4,7 @@ from .models import Option, Riddle
 
 admin.site.register(Riddle)
 admin.site.register(Option)
+
+from .models import Message
+...
+admin.site.register(Message)
