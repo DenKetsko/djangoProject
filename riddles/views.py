@@ -196,3 +196,66 @@ def msg_list(request, riddle_id):
                 '%d.%m.%Y %H:%M:%S'
             )
     return JsonResponse(json.dumps(res), safe=False)
+
+# сообщения
+from .models import Mark
+...
+def post_mark(request, riddle_id):
+    msg = Mark()
+    msg.author = request.user
+    msg.riddle = get_object_or_404(Riddle, pk=riddle_id)
+    msg.mark = request.POST['mark']
+    msg.pub_date = datetime.now()
+    msg.save()
+    return HttpResponseRedirect(app_url+str(riddle_id))
+
+# оценки
+from .models import Mark
+# вычисление среднего,
+# например, средней оценки
+from django.db.models import Avg
+...
+# страница загадки со списком ответов
+def detail(request, riddle_id):
+    error_message = None
+    if "error_message" in request.GET:
+        error_message = request.GET["error_message"]
+    return render(
+        request,
+        "answer.html",
+        {
+            "riddle": get_object_or_404(
+                Riddle, pk=riddle_id),
+            "error_message": error_message,
+            "latest_messages":
+                Message.objects
+                    .filter(chat_id=riddle_id)
+                    .order_by('-pub_date')[:5],
+            # кол-во оценок, выставленных пользователем
+            "already_rated_by_user":
+                Mark.objects
+                    .filter(author_id=request.user.id)
+                    .filter(riddle_id=riddle_id)
+                    .count(),
+            # оценка текущего пользователя
+            "user_rating":
+                Mark.objects
+                    .filter(author_id=request.user.id)
+                    .filter(riddle_id=riddle_id)
+                    .aggregate(Avg('mark'))
+                    ["mark__avg"],
+            # средняя по всем пользователям оценка
+            "avg_mark":
+                Mark.objects
+                    .filter(riddle_id=riddle_id)
+                    .aggregate(Avg('mark'))
+                    ["mark__avg"]
+        }
+    )
+
+def get_mark(request, riddle_id):
+    res = Mark.objects\
+            .filter(riddle_id=riddle_id)\
+            .aggregate(Avg('mark'))
+
+    return JsonResponse(json.dumps(res), safe=False)
